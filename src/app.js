@@ -1154,21 +1154,16 @@ class AtomicCalendarRevive extends LitElement {
 	 */
 	getTwoWeekHTML(month) {
 		return month.map((day, i) => {
-			const dayStyleOtherMonth = moment(day.date).isSame(moment(this.selectedMonth), 'month') ? '' : `opacity: .35;`
-			const dayStyleToday = moment(day.date).isSame(moment(), 'day') ? `background-color: ${this._config.calEventBackgroundColor};` : ``
+			const dayStyleToday = moment(day.date).isSame(moment(), 'day') ? `background-color: ${this._config.calActiveEventBackgroundColor};` : ``
 			const dayHolidayStyle = (day.holiday && day.holiday.length > 0) ? `color: ${this._config.calEventHolidayColor};` : ``
 			const dayStyleSat = (moment(day.date).isoWeekday() == 6) ? `background-color: ${this._config.calEventSatColor};` : ``
 			const dayStyleSun = (moment(day.date).isoWeekday() == 7) ? `background-color: ${this._config.calEventSunColor};` : ``
-			const dayStyleClicked = moment(day.date).isSame(moment(this.clickedDate), 'day') ? `background-color: ${this._config.calActiveEventBackgroundColor};` : ``
-			const dayIcon1 = (day.icon1 && day.icon1.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon1Color};" icon="${this._config.calEventIcon1}"></ha-icon></span>` : ''
-			const dayIcon2 = (day.icon2 && day.icon2.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon2Color};" icon="${this._config.calEventIcon2}"></ha-icon></span>` : ''
-			const dayIcon3 = (day.icon3 && day.icon3.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon3Color};" icon="${this._config.calEventIcon3}"></ha-icon></span>` : ''
 
 			return html`
 				${ i % 7 === 0 ? html`<tr class="week">` : ''}
-				<td class="week" style="color: ${this._config.calDayColor};${dayStyleOtherMonth}${dayStyleToday}${dayHolidayStyle}${dayStyleSat}${dayStyleSun}${dayStyleClicked}">
+				<td class="week" style="color: ${this._config.calDayColor};${dayStyleToday}${dayHolidayStyle}${dayStyleSat}${dayStyleSun}">
 					<div class="weekDay">
-						<div style="position: relative; top: 5%; ">
+						<div style="position: relative; top: 5%; text-align: center">
 							${(day.dayNumber).replace(/^0|[^/]0./, '')}
 						</div>
 						<div>
@@ -1176,7 +1171,7 @@ class AtomicCalendarRevive extends LitElement {
 						</div>
 					</div>
 				</td>
-				${i && (i % 6 === 0) ? html`</tr>` : ''}
+				${ ((i+6) % 7 === 0) ? html`</tr>` : ''}
 				`
 		})
 
@@ -1199,7 +1194,7 @@ class AtomicCalendarRevive extends LitElement {
 			this.showLoader = false
 		}
     const days = this.days;
-		var weekDays = moment.weekdaysMin(true)
+		var weekDays = moment.weekdays(true);
 
 		const htmlDayNames = weekDays.map((day) => html`
 						<th class="week" style = "padding-bottom: 8px; color:  ${this._config.calWeekDayColor};" > ${day}</th> `)
