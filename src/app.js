@@ -30,6 +30,7 @@ class AtomicCalendarRevive extends LitElement {
 		this.refreshCalEvents = null;
 		this.monthToGet = moment().format("MM");
 		this.month = [];
+    this.days = [];
 		this.showLoader = false;
 		this.eventSummary = html`&nbsp;`;
 		this.firstrun = true;
@@ -272,14 +273,16 @@ class AtomicCalendarRevive extends LitElement {
 
 		if (this.modeToggle == 1)
 			this.updateEventsHTML(this.events);
-		else
+    else if(this.modeToggle == 2)
 			this.updateCalendarHTML(this.events);
+    else
+			this.updateTwoWeekHTML(this.events);
 	}
 
 	handleToggle() {
 		if (this._config.enableModeChange) {
-			this.modeToggle == 1 ? this.modeToggle = 2 : this.modeToggle = 1
-			this.requestUpdate()
+      this.modeToggle = (this.modeToggle % 3) + 1;
+			this.requestUpdate();
 		}
 	}
 
@@ -460,6 +463,34 @@ class AtomicCalendarRevive extends LitElement {
 			}
 
 			tr.cal {
+				width: 100%;
+			}
+
+			table.week{
+				margin-left: 0px;
+				margin-right: 0px;
+				border-spacing: 10px 5px;
+				border-collapse: collapse;
+				width: 100%;
+				table-layout:fixed;
+			}
+
+			td.week {
+				padding: 1px 1px 1px 1px;
+				border: 1px solid ${this._config.calGridColor};
+				text-align: left;
+				vertical-align: top;
+				width:100%;
+        white-space: nowrap;
+        overflow: hidden;
+			}
+
+			.weekDay {
+				font-size: 95%;
+				margin: auto;
+			}
+
+			tr.week {
 				width: 100%;
 			}
 
@@ -883,7 +914,7 @@ class AtomicCalendarRevive extends LitElement {
 			this.hass.callApi('get', url[0]))).then((result) => {
 				if (monthToGet == this.monthToGet)
 					result.map((eventsArray, i) => {
-						this.month.map(m => {
+						month.map(m => {
 							const calendarTypes = calendarUrlList[i][1]
 							const calendarUrl = calendarUrlList[i][0]
 							const calendarBlacklist = (typeof calendarUrlList[i][2] != 'undefined') ? calendarUrlList[i][2] : ''
@@ -982,11 +1013,10 @@ class AtomicCalendarRevive extends LitElement {
 		this.refreshCalEvents = true;
 	}
 
-	/**
-	 * show events summary under the calendar
-	 *
-	 */
-	handleEventSummary(day) {
+  /**
+   * Make HTML summary for the given day
+   */
+  daySummaryHTML(day) {
 		let events = ([','].concat.apply([], [day.holiday, day.daybackground, day.icon1, day.icon2, day.icon3]))
 		this.clickedDate = day.date;
 		day._allEvents.sort(function (a, b) {
@@ -994,7 +1024,8 @@ class AtomicCalendarRevive extends LitElement {
 			const rightStartTime = b.start.dateTime ? moment(b.start.dateTime) : moment(b.start.date).startOf('day')
 			return moment(leftStartTime).diff(moment(rightStartTime))
 		})
-		this.eventSummary = day._allEvents.map((event, i, arr) => {
+
+    return day._allEvents.map((event, i, arr) => {
 			const titleColor = (typeof event._config.titleColor != 'undefined') ? event._config.titleColor : this._config.eventTitleColor
 			const calColor = (typeof event._config.color != 'undefined') ? event._config.color : this._config.defaultCalColor
 			var finishedEventsStyle = (event.isEventFinished && this._config.dimFinishedEvents) ? `opacity: ` + this._config.finishedEventOpacity + `; filter: ` + this._config.finishedEventFilter + `;` : ``
@@ -1014,6 +1045,14 @@ class AtomicCalendarRevive extends LitElement {
 					</div > `
 			}
 		})
+  }
+
+	/**
+	 * show events summary under the calendar
+	 *
+	 */
+	handleEventSummary(day) {
+		this.eventSummary = this.daySummaryHTML(day);
 
 		this.requestUpdate()
 	}
@@ -1076,7 +1115,6 @@ class AtomicCalendarRevive extends LitElement {
 	 *
 	 */
 	updateCalendarHTML() {
-
 		if (this.month.length == 0 || this.refreshCalEvents || moment().diff(this.lastCalendarUpdateTime, 'minutes') > 120) {
 			this.lastCalendarUpdateTime = moment()
 			this.showLoader = true
@@ -1084,8 +1122,8 @@ class AtomicCalendarRevive extends LitElement {
 			this.getCalendarEvents(this.month[0].date, this.month[41].date, this.monthToGet, this.month)
 			this.showLoader = false
 		}
-		const month = this.month
-		var weekDays = moment.weekdaysMin(true)
+    const month = this.month;
+		var weekDays = moment.weekdaysMin(true);
 
 		const htmlDayNames = weekDays.map((day) => html`
 						<th class="cal" style = "padding-bottom: 8px; color:  ${this._config.calWeekDayColor};" > ${day}</th> `)
@@ -1106,6 +1144,79 @@ class AtomicCalendarRevive extends LitElement {
 						</div>
 						<div style="font-size: 90%;">
 							${this.eventSummary}
+						</div>
+			`
+	}
+
+	/**
+	 * create html cells for all days of calendar
+	 *
+	 */
+	getTwoWeekHTML(month) {
+		return month.map((day, i) => {
+			const dayStyleOtherMonth = moment(day.date).isSame(moment(this.selectedMonth), 'month') ? '' : `opacity: .35;`
+			const dayStyleToday = moment(day.date).isSame(moment(), 'day') ? `background-color: ${this._config.calEventBackgroundColor};` : ``
+			const dayHolidayStyle = (day.holiday && day.holiday.length > 0) ? `color: ${this._config.calEventHolidayColor};` : ``
+			const dayStyleSat = (moment(day.date).isoWeekday() == 6) ? `background-color: ${this._config.calEventSatColor};` : ``
+			const dayStyleSun = (moment(day.date).isoWeekday() == 7) ? `background-color: ${this._config.calEventSunColor};` : ``
+			const dayStyleClicked = moment(day.date).isSame(moment(this.clickedDate), 'day') ? `background-color: ${this._config.calActiveEventBackgroundColor};` : ``
+			const dayIcon1 = (day.icon1 && day.icon1.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon1Color};" icon="${this._config.calEventIcon1}"></ha-icon></span>` : ''
+			const dayIcon2 = (day.icon2 && day.icon2.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon2Color};" icon="${this._config.calEventIcon2}"></ha-icon></span>` : ''
+			const dayIcon3 = (day.icon3 && day.icon3.length > 0) ? html`<span><ha-icon class="calIcon" style="color: ${this._config.calEventIcon3Color};" icon="${this._config.calEventIcon3}"></ha-icon></span>` : ''
+
+			return html`
+				${ i % 7 === 0 ? html`<tr class="week">` : ''}
+				<td class="week" style="color: ${this._config.calDayColor};${dayStyleOtherMonth}${dayStyleToday}${dayHolidayStyle}${dayStyleSat}${dayStyleSun}${dayStyleClicked}">
+					<div class="weekDay">
+						<div style="position: relative; top: 5%; ">
+							${(day.dayNumber).replace(/^0|[^/]0./, '')}
+						</div>
+						<div>
+              ${this.daySummaryHTML(day)}
+						</div>
+					</div>
+				</td>
+				${i && (i % 6 === 0) ? html`</tr>` : ''}
+				`
+		})
+
+	}
+	/**
+	 * update Two-week mode HTML
+	 *
+	 */
+	updateTwoWeekHTML() {
+
+		if (this.days.length == 0 || this.refreshCalEvents || moment().diff(this.lastCalendarUpdateTime, 'minutes') > 120) {
+			this.lastCalendarUpdateTime = moment()
+			this.showLoader = true
+		  const firstDay = moment().weekday(0);
+      this.days = [];
+		  for (var i = 0; i < 14; i++) {
+			  this.days.push(new CalendarDay(moment(firstDay).add(i, 'days'), i))
+		  }
+			this.getCalendarEvents(this.days[0].date, this.days[13].date, this.monthToGet, this.days)
+			this.showLoader = false
+		}
+    const days = this.days;
+		var weekDays = moment.weekdaysMin(true)
+
+		const htmlDayNames = weekDays.map((day) => html`
+						<th class="week" style = "padding-bottom: 8px; color:  ${this._config.calWeekDayColor};" > ${day}</th> `)
+
+		this.content = html`
+							<div class="calTitleContainer">
+								${ this.getCalendarHeaderHTML()}
+			</div >
+						<div class="calTableContainer">
+							<table class="week" style="color: ${this._config.eventTitleColor};">
+								<thead>  <tr>
+									${htmlDayNames}
+								</tr>  </thead>
+								<tbody>
+									${this.getTwoWeekHTML(days)}
+								</tbody>
+							</table>
 						</div>
 			`
 	}
